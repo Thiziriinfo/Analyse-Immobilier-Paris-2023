@@ -418,8 +418,8 @@ elif page == "📐 Profil des Biens":
     st.subheader("Tableau comparatif — segments de marché")
     pivot = dff.groupby(['type_local','surface_cat'])['prix_m2'].median().unstack('type_local').round(0)
     pivot.columns.name = None
-    st.dataframe(pivot.style.background_gradient(cmap='Purples', axis=None),
-                 use_container_width=True)
+    pivot = pivot.reset_index().rename(columns={'surface_cat': 'Segment'})
+    st.dataframe(pivot, use_container_width=True, hide_index=True)
     insight("Ce tableau croise <strong>type de bien × taille</strong> pour révéler les segments "
             "où l'écart Appartement/Maison est le plus marqué. Les grandes maisons parisiennes "
             "sont si rares qu'elles constituent une catégorie à part entière.")
@@ -549,9 +549,9 @@ elif page == "🔍 Explorateur SQL":
     arr_label                               AS arrondissement,
     COUNT(*)                                AS nb_transactions,
     ROUND(AVG(prix_m2), 0)                  AS prix_moyen,
-    ROUND(AVG(CASE WHEN q=0.5 THEN prix_m2 END), 0) AS prix_median,
     ROUND(MIN(prix_m2), 0)                  AS prix_min,
-    ROUND(MAX(prix_m2), 0)                  AS prix_max
+    ROUND(MAX(prix_m2), 0)                  AS prix_max,
+    ROUND(MAX(prix_m2) - MIN(prix_m2), 0)   AS amplitude_eur
 FROM transactions
 GROUP BY arr_label
 ORDER BY prix_moyen DESC;""",
@@ -794,7 +794,9 @@ elif page == "📈 Tendances & Prévisions":
         radar_arrs = [6, 11, 13, 16, 19]
         cats = ['Accessibilité','Liquidité','Rendement','Surface','Prestige']
         fig_r = go.Figure()
-        colors_r = [ACC,'#9B7FE8','#4CAF50','#f0c040','#e84040']
+        colors_r  = [ACC,'#9B7FE8','#4CAF50','#f0c040','#e84040']
+        fills_r   = ['rgba(108,99,255,0.12)','rgba(155,127,232,0.12)',
+                     'rgba(76,175,80,0.12)','rgba(240,192,64,0.12)','rgba(232,64,64,0.12)']
         for i, arr_id in enumerate(radar_arrs):
             row = arr_stats[arr_stats['arr']==arr_id].iloc[0]
             vals = [row['s_access'], row['s_liquid'], row['s_rend'],
@@ -803,7 +805,7 @@ elif page == "📈 Tendances & Prévisions":
             fig_r.add_trace(go.Scatterpolar(
                 r=vals, theta=cats+[cats[0]],
                 fill='toself', name=row['arr_label'],
-                fillcolor=colors_r[i].replace(')',',0.12)').replace('rgb','rgba') if 'rgb' in colors_r[i] else colors_r[i]+'20',
+                fillcolor=fills_r[i],
                 line=dict(color=colors_r[i], width=2)
             ))
         fig_r.update_layout(
